@@ -2,8 +2,8 @@
 #include <Ultrasonic.h>
 #include <IRremote.h>
 
-#define TRIGGER_PIN  8
-#define ECHO_PIN     9
+#define TRIGGER_PIN  6
+#define ECHO_PIN     7
 
 Ultrasonic ultrasonic(TRIGGER_PIN, ECHO_PIN);
 Servo servoFL;  // create servo object to control a servo
@@ -16,10 +16,13 @@ IRrecv irrecv(RECPin);
 decode_results results;
 
 int pos = 0;
-int fl = 0;
 int del = 10;
 String cursig;
-int pose;
+int pose = 1;
+int del2 = 30;
+bool autos = false;
+float cmD;
+long ms;
 
 /*
  * pose = 0 : sitting
@@ -37,32 +40,47 @@ void setup() {
 }
 
 void loop() {
-  if (irrecv.decode(&results)) {
-    
-    cursig = String(results.value, HEX);
-    //Serial.println(cursig);
-    if (cursig == "ff5aa5") {
-      stand();
-      pose = 1;
+  if (not autos){
+    if (irrecv.decode(&results)) {
+      
+      cursig = String(results.value, HEX);
+      //Serial.println(cursig);
+      if (cursig == "ff5aa5") {
+        stand();
+        pose = 1;
+      }
+      else if (cursig == "ff02fd") {
+        stepforward();
+        pose = 1;
+      }
+      else if (cursig == "ff38c7") {
+        sit();
+        pos = 0;
+      }
+      else if (cursig == "ff906f") {
+        stepright();
+      }
+      else if (cursig == "ffa25d"){
+        autos = true;
+      }
+      irrecv.resume(); // Receive the next value
     }
-    else if (cursig == "ff02fd") {
+  }
+  else{
+    delay(1000);
+    ms = ultrasonic.timing();
+    cmD = ultrasonic.convert(ms, Ultrasonic::CM);
+    //Serial.println(cmD, ms);
+    if (cmD >= 5.0){
       stepforward();
-      pose = 1;
     }
-    else if (cursig == "ff38c7") {
-      sit();
-      pos = 0;
+    else {
+      stepright();
+      
     }
-    irrecv.resume(); // Receive the next value
   }
-  
-  if (!fl){
-
-    fl = 1;
-    
-  }
-
 }
+
 
 int stand() {
     if (pos == 0){
@@ -99,92 +117,124 @@ int sit() {
   }
 }
 
-int stepforward() {
-    if (pose != 1){
-      stand();
-    }
-    for (pos = 90; pos >= 75; pos -= 1){
-      servoBL.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    
-    for (pos = 90; pos <= 120; pos += 1){
-      servoFR.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    
-    for (pos = 75; pos <= 90; pos += 1){
-      servoBL.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    // First half ends
-    for (pos = 90; pos <= 105; pos += 1){
-      servoBR.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    
-    for (pos = 90; pos >= 60; pos -= 1){
-      servoFL.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    for (pos = 105; pos >= 90; pos -= 1){
-      servoBR.write(pos);
-      delay(del);
-    }
-    delay(del*2);
 
-    
-    for (pos = 0; pos <= 30; pos += 1){
-      servoFR.write(120 - pos);
-      servoBR.write(int(90 - pos));
-      delay(del);
-      servoFL.write(60 + pos);
-      servoBL.write(int(90 + pos));
-      delay(del);
-    }
-    // robot is halfway
-    /*
-    for (pos = 90; pos <= 120; pos += 1){
-      servoFL.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    */
-    for (pos = 60; pos <= 90; pos += 1){
-      servoBR.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    /*
-    for (pos = 120; pos >= 90; pos -= 1){
-      servoFL.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    
-    // First half ends
-    for (pos = 90; pos >= 60; pos -= 1){
-      servoFR.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    */
-    for (pos = 120; pos >= 90; pos -= 1){
-      servoBL.write(pos);
-      delay(del);
-    }
-    delay(del*2);
-    /*
-    for (pos = 60; pos <= 90; pos += 1){
-      servoFR.write(pos);
-      delay(del);
-    }
-    
-    //delay(del*2);
-    */
+int stepright() {
+  if (pose != 1) {
+    stand();
   }
+  for (pos = 90; pos <= 105; pos += 1){
+    servoFR.write(pos);
+    servoBL.write(pos);
+    delay(del);
+  }
+  delay(del*2);
+  for (pos = 90; pos >= 75; pos -= 1){
+    servoFL.write(pos);
+    servoBR.write(pos);
+    delay(del);
+  }
+  delay(del*2);
+  for (pos = 105; pos >= 90; pos -= 1){
+    servoFR.write(pos);
+    servoBL.write(pos);
+    delay(del);
+  }
+  delay(del*2);
+  for (pos = 75; pos <= 90; pos += 1){
+    servoFL.write(pos);
+    servoBR.write(pos);
+    delay(del);
+  }
+  delay(del*2);
+  return 0;
+}
+
+int stepforward() {
+  if (pose != 1){
+    stand();
+  }
+  for (pos = 90; pos >= 75; pos -= 1){
+    servoBL.write(pos);
+    delay(del);
+  }
+  delay(del2);
+  
+  for (pos = 90; pos <= 120; pos += 1){
+    servoFR.write(pos);
+    delay(del);
+  }
+  delay(del2);
+  
+  for (pos = 75; pos <= 90; pos += 1){
+    servoBL.write(pos);
+    delay(del);
+  }
+  delay(del2);
+  // First half ends
+  for (pos = 90; pos <= 105; pos += 1){
+    servoBR.write(pos);
+    delay(del);
+  }
+  delay(del2);
+  
+  for (pos = 90; pos >= 60; pos -= 1){
+    servoFL.write(pos);
+    delay(del);
+  }
+  delay(del2);
+  for (pos = 105; pos >= 90; pos -= 1){
+    servoBR.write(pos);
+    delay(del);
+  }
+  delay(del2);
+
+  
+  for (pos = 0; pos <= 30; pos += 1){
+    servoFR.write(120 - pos);
+    servoBR.write(int(90 - pos));
+    delay(del);
+    servoFL.write(60 + pos);
+    servoBL.write(int(90 + pos));
+    delay(del);
+  }
+  // robot is halfway
+  /*
+  for (pos = 90; pos <= 120; pos += 1){
+    servoFL.write(pos);
+    delay(del);
+  }
+  delay(del*2);
+  */
+  for (pos = 60; pos <= 90; pos += 1){
+    servoBR.write(pos);
+    delay(del);
+  }
+  delay(del2);
+  /*
+  for (pos = 120; pos >= 90; pos -= 1){
+    servoFL.write(pos);
+    delay(del);
+  }
+  delay(del*2);
+  
+  // First half ends
+  for (pos = 90; pos >= 60; pos -= 1){
+    servoFR.write(pos);
+    delay(del);
+  }
+  delay(del*2);
+  */
+  for (pos = 120; pos >= 90; pos -= 1){
+    servoBL.write(pos);
+    delay(del);
+  }
+  delay(del2);
+  /*
+  for (pos = 60; pos <= 90; pos += 1){
+    servoFR.write(pos);
+    delay(del);
+  }
+  
+  //delay(del*2);
+  */
+}
